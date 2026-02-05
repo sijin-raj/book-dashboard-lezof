@@ -21,13 +21,19 @@ export async function apiFetch<T>(
       : `${baseUrl}${normalizedPath}`;
 
   try {
+    const isFormData =
+      typeof FormData !== "undefined" && options.body instanceof FormData;
+    const headers = new Headers(options.headers || {});
+    if (authToken) {
+      headers.set("Authorization", `Bearer ${authToken}`);
+    }
+    if (!isFormData && !headers.has("Content-Type")) {
+      headers.set("Content-Type", "application/json");
+    }
+
     const response = await fetch(requestUrl, {
       ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-        ...(options.headers || {}),
-      },
+      headers,
     });
 
     const contentType = response.headers.get("content-type") || "";

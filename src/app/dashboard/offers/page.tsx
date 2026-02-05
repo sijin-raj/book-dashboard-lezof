@@ -4,6 +4,7 @@ import { FaCloudUploadAlt } from "react-icons/fa";
 import { useEffect, useState } from "react";
 
 import { apiFetch } from "@/lib/api";
+import { emitToast } from "@/lib/toast";
 
 type Offer = {
   id: number;
@@ -210,8 +211,13 @@ export default function OffersPage() {
     try {
       await apiFetch<{ success: boolean }>(url, { method: "DELETE" });
       await loadOfferImages(offerId);
+      emitToast({ message: "Images deleted.", variant: "success" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete images");
+      emitToast({
+        message: err instanceof Error ? err.message : "Failed to delete images",
+        variant: "error",
+      });
     }
   };
 
@@ -262,9 +268,45 @@ export default function OffersPage() {
         },
       }));
     });
+
+    uploadOfferImage(offerId, target, lang, file);
   };
 
   const getPreviewSrc = (input: ImageInput) => input.dataUrl || input.url || "";
+
+  const uploadOfferImage = async (
+    offerId: number,
+    target: "desktop" | "mobile",
+    lang: "en" | "ar",
+    file: File
+  ) => {
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const current =
+        formState[offerId]?.[target]?.[lang] ||
+        DEFAULT_OFFER_IMAGE_FORM[target][lang];
+      if (current.altText) {
+        formData.append("altText", current.altText);
+      }
+      await apiFetch(
+        `/api/dashboard/offers/${offerId}/image/upload?device=${target}&locale=${lang}`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+      await loadOfferImages(offerId);
+      emitToast({ message: "Image uploaded.", variant: "success" });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to upload image");
+      emitToast({
+        message: err instanceof Error ? err.message : "Failed to upload image",
+        variant: "error",
+      });
+    }
+  };
 
   const handleUrlChange = (
     offerId: number,
@@ -340,8 +382,13 @@ export default function OffersPage() {
         }
       );
       await fetchOffers();
+      emitToast({ message: "Images saved.", variant: "success" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update image");
+      emitToast({
+        message: err instanceof Error ? err.message : "Failed to update image",
+        variant: "error",
+      });
     }
   };
 
