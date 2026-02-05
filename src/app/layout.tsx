@@ -20,6 +20,9 @@ const notoArabic = Noto_Sans_Arabic({
 export const metadata: Metadata = {
   title: "Booking Dashboard",
   description: "Admin dashboard for booking backend",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({

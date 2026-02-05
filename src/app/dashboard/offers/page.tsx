@@ -1,6 +1,6 @@
 "use client";
 
-import { FaCloudUploadAlt, FaTimes } from "react-icons/fa";
+import { FaCloudUploadAlt } from "react-icons/fa";
 import { useEffect, useState } from "react";
 
 import { apiFetch } from "@/lib/api";
@@ -245,12 +245,49 @@ export default function OffersPage() {
     file: File | null
   ) => {
     if (!file) return;
-    readFileAsDataUrl(file, (result) =>
-      handleChange(offerId, target, lang, "dataUrl", result)
-    );
+    readFileAsDataUrl(file, (result) => {
+      setFormState((prev) => ({
+        ...prev,
+        [offerId]: {
+          ...(prev[offerId] || DEFAULT_OFFER_IMAGE_FORM),
+          [target]: {
+            ...(prev[offerId]?.[target] || DEFAULT_OFFER_IMAGE_FORM[target]),
+            [lang]: {
+              ...(prev[offerId]?.[target]?.[lang] ||
+                DEFAULT_OFFER_IMAGE_FORM[target][lang]),
+              url: "",
+              dataUrl: result,
+            },
+          },
+        },
+      }));
+    });
   };
 
   const getPreviewSrc = (input: ImageInput) => input.dataUrl || input.url || "";
+
+  const handleUrlChange = (
+    offerId: number,
+    target: "desktop" | "mobile",
+    lang: "en" | "ar",
+    value: string
+  ) => {
+    setFormState((prev) => ({
+      ...prev,
+      [offerId]: {
+        ...(prev[offerId] || DEFAULT_OFFER_IMAGE_FORM),
+        [target]: {
+          ...(prev[offerId]?.[target] || DEFAULT_OFFER_IMAGE_FORM[target]),
+          [lang]: {
+            ...(prev[offerId]?.[target]?.[lang] ||
+              DEFAULT_OFFER_IMAGE_FORM[target][lang]),
+            url: value,
+            dataUrl: value ? "" : prev[offerId]?.[target]?.[lang]?.dataUrl || "",
+          },
+        },
+      },
+    }));
+  };
 
   const buildImagePayload = (input: ImageInput) => {
     const payload: { url?: string; dataUrl?: string; altText?: string } = {};
@@ -462,6 +499,23 @@ export default function OffersPage() {
                               Supports: PNG, JPG, JPEG, WEBP
                             </p>
                           </label>
+                          <input
+                            className="input"
+                            placeholder="Image URL (optional)"
+                            value={inputState.url}
+                            onChange={(event) =>
+                              handleUrlChange(
+                                selectedOfferId,
+                                target,
+                                lang,
+                                event.target.value
+                              )
+                            }
+                          />
+                          <p className="muted" style={{ marginTop: 6 }}>
+                            If uploads fail due to request size, paste an image
+                            URL instead.
+                          </p>
                           <input
                             className="input"
                             placeholder={
