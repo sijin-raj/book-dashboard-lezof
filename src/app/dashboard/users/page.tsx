@@ -1,0 +1,181 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+import { apiFetch } from "@/lib/api";
+
+type CreateUserResponse = {
+  success: boolean;
+  data: {
+    id: number;
+    name: string;
+    email: string;
+    role: string;
+    createdAt: string;
+  };
+};
+
+type ListUsersResponse = {
+  success: boolean;
+  data: Array<{
+    id: number;
+    name: string;
+    email: string;
+    role: string;
+    createdAt: string;
+  }>;
+};
+
+export default function UsersPage() {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState("USER");
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<CreateUserResponse["data"] | null>(
+    null
+  );
+  const [loading, setLoading] = useState(false);
+  const [users, setUsers] = useState<ListUsersResponse["data"]>([]);
+  const [listError, setListError] = useState<string | null>(null);
+
+  const fetchUsers = async () => {
+    setListError(null);
+    try {
+      const response = await apiFetch<ListUsersResponse>("/api/dashboard/users");
+      setUsers(response.data);
+    } catch (err) {
+      setListError(err instanceof Error ? err.message : "Failed to load users");
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError(null);
+    setSuccess(null);
+    setLoading(true);
+
+    try {
+      const response = await apiFetch<CreateUserResponse>("/api/dashboard/users",
+        {
+          method: "POST",
+          body: JSON.stringify({ name, email, password, role }),
+        }
+      );
+      setSuccess(response.data);
+      fetchUsers();
+      setName("");
+      setEmail("");
+      setPassword("");
+      setRole("USER");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create user");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <section>
+      <h1 className="section-title">Users</h1>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
+          gap: 18,
+          marginTop: 18,
+        }}
+      >
+        <div className="card">
+          <h2 style={{ marginBottom: 12 }}>Create User</h2>
+          <form onSubmit={handleSubmit}>
+            <label style={{ display: "block", marginBottom: 16 }}>
+              Name
+              <input
+                className="input"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                required
+              />
+            </label>
+            <label style={{ display: "block", marginBottom: 16 }}>
+              Email
+              <input
+                className="input"
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                required
+              />
+            </label>
+            <label style={{ display: "block", marginBottom: 16 }}>
+              Password
+              <input
+                className="input"
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                required
+              />
+            </label>
+            <label style={{ display: "block", marginBottom: 16 }}>
+              Role
+              <select
+                className="select"
+                value={role}
+                onChange={(event) => setRole(event.target.value)}
+              >
+                <option value="USER">Member</option>
+                <option value="ADMIN">Admin</option>
+              </select>
+            </label>
+            {error ? <p className="error">{error}</p> : null}
+            {success ? (
+              <p className="muted">
+                Created {success.name} ({success.role}) — {success.email}
+              </p>
+            ) : null}
+            <button
+              type="submit"
+              className="button"
+              disabled={loading}
+              style={{ marginTop: 8 }}
+            >
+              {loading ? "Creating..." : "Create user"}
+            </button>
+          </form>
+        </div>
+        <div className="card">
+          <h2 style={{ marginBottom: 12 }}>All Users</h2>
+          {listError ? <p className="error">{listError}</p> : null}
+          <table className="table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((user) => (
+                <tr key={user.id}>
+                  <td>{user.id}</td>
+                  <td>{user.name}</td>
+                  <td>{user.email}</td>
+                  <td>
+                    <span className="tag">{user.role}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  );
+}
