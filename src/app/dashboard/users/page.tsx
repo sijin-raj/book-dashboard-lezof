@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { apiFetch } from "@/lib/api";
+import { emitToast } from "@/lib/toast";
 
 type CreateUserResponse = {
   success: boolean;
@@ -26,6 +27,19 @@ type ListUsersResponse = {
   }>;
 };
 
+type UpdateUserResponse = {
+  success: boolean;
+  data: {
+    id: number;
+    name: string;
+    email: string;
+    role: string;
+    createdAt: string;
+  };
+};
+
+type UserRow = ListUsersResponse["data"][number];
+
 export default function UsersPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -38,6 +52,12 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<ListUsersResponse["data"]>([]);
   const [listError, setListError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState<{
+    name: string;
+    email: string;
+    role: string;
+  }>({ name: "", email: "", role: "USER" });
 
   const fetchUsers = async () => {
     setListError(null);
@@ -67,6 +87,7 @@ export default function UsersPage() {
         }
       );
       setSuccess(response.data);
+      emitToast({ message: "User created successfully.", variant: "success" });
       fetchUsers();
       setName("");
       setEmail("");
@@ -76,6 +97,55 @@ export default function UsersPage() {
       setError(err instanceof Error ? err.message : "Failed to create user");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const startEdit = (user: UserRow) => {
+    setEditingId(user.id);
+    setEditForm({ name: user.name, email: user.email, role: user.role });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditForm({ name: "", email: "", role: "USER" });
+  };
+
+  const handleUpdateUser = async (userId: number) => {
+    setListError(null);
+    const payload = {
+      name: editForm.name.trim(),
+      email: editForm.email.trim(),
+      role: editForm.role,
+    };
+    if (!payload.name || !payload.email || !payload.role) {
+      setListError("Name, email, and role are required.");
+      return;
+    }
+    try {
+      await apiFetch<UpdateUserResponse>(`/api/dashboard/users/${userId}`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      });
+      await fetchUsers();
+      cancelEdit();
+      emitToast({ message: "User updated successfully.", variant: "success" });
+    } catch (err) {
+      setListError(err instanceof Error ? err.message : "Failed to update user");
+    }
+  };
+
+  const handleDeleteUser = async (userId: number) => {
+    const confirmed = window.confirm("Delete this user?");
+    if (!confirmed) return;
+    setListError(null);
+    try {
+      await apiFetch<{ success: boolean }>(`/api/dashboard/users/${userId}`, {
+        method: "DELETE",
+      });
+      await fetchUsers();
+      emitToast({ message: "User deleted successfully.", variant: "success" });
+    } catch (err) {
+      setListError(err instanceof Error ? err.message : "Failed to delete user");
     }
   };
 
@@ -159,6 +229,7 @@ export default function UsersPage() {
                 <th>Name</th>
                 <th>Email</th>
                 <th>Role</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -170,8 +241,101 @@ export default function UsersPage() {
                   <td>
                     <span className="tag">{user.role}</span>
                   </td>
+                  <td>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <button
+                        type="button"
+                        className="button button-outline"
+                        onClick={() => startEdit(user)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="button button-outline"
+                        onClick={() => handleDeleteUser(user.id)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
+              {editingId !== null ? (
+                <tr>
+                  <td colSpan={5}>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                        gap: 12,
+                        alignItems: "end",
+                        padding: "12px 0",
+                      }}
+                    >
+                      <label>
+                        Name
+                        <input
+                          className="input"
+                          value={editForm.name}
+                          onChange={(event) =>
+                            setEditForm((prev) => ({
+                              ...prev,
+                              name: event.target.value,
+                            }))
+                          }
+                        />
+                      </label>
+                      <label>
+                        Email
+                        <input
+                          className="input"
+                          type="email"
+                          value={editForm.email}
+                          onChange={(event) =>
+                            setEditForm((prev) => ({
+                              ...prev,
+                              email: event.target.value,
+                            }))
+                          }
+                        />
+                      </label>
+                      <label>
+                        Role
+                        <select
+                          className="select"
+                          value={editForm.role}
+                          onChange={(event) =>
+                            setEditForm((prev) => ({
+                              ...prev,
+                              role: event.target.value,
+                            }))
+                          }
+                        >
+                          <option value="USER">Member</option>
+                          <option value="ADMIN">Admin</option>
+                        </select>
+                      </label>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button
+                          type="button"
+                          className="button"
+                          onClick={() => handleUpdateUser(editingId)}
+                        >
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          className="button button-outline"
+                          onClick={cancelEdit}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { FaCloudUploadAlt, FaTimes } from "react-icons/fa";
 import { useEffect, useState } from "react";
 
 import { apiFetch } from "@/lib/api";
@@ -146,7 +147,7 @@ export default function OffersPage() {
   const loadOfferImages = async (offerId: number) => {
     try {
       const response = await apiFetch<OfferImageViewResponse>(
-        `/api/public/offers/${offerId}/image`
+        `/api/dashboard/offers/${offerId}/image`
       );
       if (!response.data?.grouped) return;
       const grouped = response.data.grouped;
@@ -186,6 +187,33 @@ export default function OffersPage() {
     if (selectedOfferId === null) return;
     loadOfferImages(selectedOfferId);
   }, [selectedOfferId]);
+
+  const handleDeleteImages = async (
+    offerId: number,
+    options: { device?: "desktop" | "mobile"; locale?: "en" | "ar" }
+  ) => {
+    const params = new URLSearchParams();
+    if (options.device) params.set("device", options.device);
+    if (options.locale) params.set("locale", options.locale);
+    const query = params.toString();
+    const url = query
+      ? `/api/dashboard/offers/${offerId}/image?${query}`
+      : `/api/dashboard/offers/${offerId}/image`;
+
+    const confirmed = window.confirm(
+      options.device || options.locale
+        ? "Delete selected images?"
+        : "Delete all images for this offer?"
+    );
+    if (!confirmed) return;
+
+    try {
+      await apiFetch<{ success: boolean }>(url, { method: "DELETE" });
+      await loadOfferImages(offerId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete images");
+    }
+  };
 
   const handleChange = (
     offerId: number,
@@ -371,10 +399,50 @@ export default function OffersPage() {
                               className="offer-preview"
                             />
                           ) : null}
-                          <div className="upload-row offer-upload-row">
+                          <div className="upload-header">
+                            <h5>Upload Photos</h5>
+                           
+                          </div>
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: 8,
+                              flexWrap: "wrap",
+                              justifyContent: "flex-end",
+                            }}
+                          >
+                            <button
+                              type="button"
+                              className="icon-button icon-button-outline icon-button-text"
+                              onClick={() =>
+                                handleDeleteImages(selectedOfferId, {
+                                  device: target,
+                                  locale: lang,
+                                })
+                              }
+                              aria-label={`Delete ${lang.toUpperCase()} image`}
+                              title={`Delete ${lang.toUpperCase()}`}
+                            >
+                              🗑 <span>Delete {lang.toUpperCase()}</span>
+                            </button>
+                            <button
+                              type="button"
+                              className="icon-button icon-button-outline icon-button-text"
+                              onClick={() =>
+                                handleDeleteImages(selectedOfferId, {
+                                  device: target,
+                                })
+                              }
+                              aria-label={`Delete ${target} images`}
+                              title={`Delete ${target}`}
+                            >
+                              🗑 <span>Delete {target}</span>
+                            </button>
+                          </div>
+                          <label className="upload-dropzone">
                             <input
                               type="file"
-                              className="file-input"
+                              className="upload-input"
                               accept="image/*"
                               onChange={(event) =>
                                 handleFileUpload(
@@ -385,44 +453,15 @@ export default function OffersPage() {
                                 )
                               }
                             />
-                            <input
-                              className="input"
-                              placeholder={
-                                lang === "en"
-                                  ? "Image URL"
-                                  : "Arabic image URL"
-                              }
-                              value={inputState.url}
-                              onChange={(event) =>
-                                handleChange(
-                                  selectedOfferId,
-                                  target,
-                                  lang,
-                                  "url",
-                                  event.target.value
-                                )
-                              }
-                            />
-                          </div>
-                          <textarea
-                            className="textarea"
-                            placeholder={
-                              lang === "en"
-                                ? "Data URL (for uploads)"
-                                : "Arabic data URL (for uploads)"
-                            }
-                            value={inputState.dataUrl}
-                            onChange={(event) =>
-                              handleChange(
-                                selectedOfferId,
-                                target,
-                                lang,
-                                "dataUrl",
-                                event.target.value
-                              )
-                            }
-                            rows={3}
-                          />
+                            <FaCloudUploadAlt className="upload-fa" />
+                            <p>
+                              Drop your image here, or{" "}
+                              <span className="upload-link">browse</span>
+                            </p>
+                            <p className="upload-hint">
+                              Supports: PNG, JPG, JPEG, WEBP
+                            </p>
+                          </label>
                           <input
                             className="input"
                             placeholder={
@@ -447,10 +486,26 @@ export default function OffersPage() {
                 <div style={{ marginTop: 12 }}>
                   <button
                     type="button"
-                    className="button offer-save-button"
+                    className="icon-button icon-button-text"
                     onClick={handleUpdate}
+                    aria-label="Save images"
+                    title="Save"
                   >
-                    Save
+                    ✓ <span>Save</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="icon-button icon-button-outline icon-button-text"
+                    style={{ marginLeft: 12 }}
+                    onClick={() =>
+                      selectedOfferId !== null
+                        ? handleDeleteImages(selectedOfferId, {})
+                        : null
+                    }
+                    aria-label="Delete all images"
+                    title="Delete all"
+                  >
+                    🗑 <span>Delete all</span>
                   </button>
                 </div>
               </>
