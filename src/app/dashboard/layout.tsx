@@ -136,6 +136,23 @@ export default function DashboardLayout({
                 Offer Images
               </Link>
               <Link
+                href="/dashboard/complaints"
+                className={`nav-link ${
+                  pathname?.includes("/complaints") ? "active" : ""
+                }`}
+                onClick={() => setIsSidebarOpen(false)}
+              >
+                <span className="nav-icon" aria-hidden="true">
+                <Image
+                  src="/icons/Customers.svg"
+                  alt=""
+                  width={18}
+                  height={18}
+                />
+                </span>
+                Complaint Log
+              </Link>
+              <Link
                 href="/dashboard/users"
                 className={`nav-link ${
                   pathname?.includes("/users") ? "active" : ""
